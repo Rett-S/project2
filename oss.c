@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
         fprintf(stderr,"Failed to fork\n");
         return ( 1 );
     case 0:
-        worker();
+        //worker();
         break;
     default:
         oss();
@@ -35,31 +35,35 @@ int main(int argc, char** argv) {
 }
 
 void oss() {
-  
-  int i;
   signal(SIGALRM, signal_handler);  // Turn on alarm handler
   alarm(60);  // set up alarm call
-  int shmid = shmget(SHMKEY, BUFF_SZ, 0777 | IPC_CREAT);
+  int shmid = shmget(SHMKEY, 2*BUFF_SZ, 0777 | IPC_CREAT);
 
   if ( shmid == -1 ) {
     fprintf(stderr,"Parent: ... Error in shmget ...\n");
     exit (1);
   }
 
-  int * pint = ( int * )( shmat ( shmid, 0, 0 ) );
-
-  for ( i = 0; i < 10; i++ ) {
-    sleep ( 2 );
-    *pint = 10 * i ;             /* Write into the shared area. */
-    printf("Parent: Written Val.: = %d\n",*pint);
+  int *pint = (int *)(shmat (shmid, (void*)0, 0 ) );
+  //int *nint = (int *)(shmat (nanoid, (void*)0, 0) );
+  int *nint = pint + 1;
+  for (int i=0;i<10;i++) {
+    *pint = i;
+    //*systemclock->seconds = 1*i;
+    for (int x=0;x<10;x++) {
+      usleep(100000);
+      *nint = 100000*x;
+      printf("Time: %d : %d\n",*pint,*nint);
+    }
+    //printf("Seconds: %d Nanoseconds: %d\n",*pint,*nint);
 
   }
 
   shmdt(pint);
-
   shmctl(shmid,IPC_RMID,NULL);
 
 }
+
 
 void worker() {
 
@@ -80,11 +84,6 @@ void worker() {
   shmdt(cint);
 }
 
-struct systemclock {
-    int seconds;
-    int nanoseconds;
-};
-
 struct PCB {
     int occupied; // either true or false
     pid_t pid; // process id of this child
@@ -95,9 +94,9 @@ struct PCB processTable[20];
 
 void signal_handler(int sig) {
   // code to send kill signal to all children based on their PIDs in process table
-   
+
   free(processTable);
-  
+
   exit(1);
 }
 
